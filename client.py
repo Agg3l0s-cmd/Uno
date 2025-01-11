@@ -165,7 +165,7 @@ class Client:
             # Render the card
             self.screen.blit(
                 pygame.transform.scale(self.load_card_image(
-                    card_image), (card_width, card_height)),
+                    card_image.getPath()), (card_width, card_height)),
                 (center_x, center_y)
             )
 
@@ -226,16 +226,18 @@ class Client:
             pygame.draw.line(self.screen, (r, g, b),
                              (0, y), (self.window_width, y))
 
-    def handle_click(self, pos):
+    def handle_click(self, pos, playable):
         """Handle mouse click events. Remove the clicked card and render it in the center."""
         for index, rect in enumerate(self.bottom_card_rects):
-            if rect.collidepoint(pos):
-                # Remove the clicked card from the hand
-                clicked_card = self.conn._hand[index]
-                middle_card = Card.Card(self.conn.middle)
+            clicked_card = self.conn._hand[index]
 
-                log(clicked_card.matches(middle_card))
-                if clicked_card.matches(middle_card):
+            if rect.collidepoint(pos) and playable:
+                # Remove the clicked card from the hand
+                # clicked_card = self.conn._hand[index]
+                # middle_card = Card.Card(self.conn.middle)
+
+                log(self.conn.id, clicked_card.matches(self.conn.middle))
+                if clicked_card.matches(self.conn.middle):
 
                     self.conn._hand.pop(index)
 
@@ -256,12 +258,9 @@ class Client:
                     # time.sleep(.2)
                     self.conn.send_message("UPDATE")
 
-                    # Reset the turn for current user and if he can draw a card
-                    # self.conn.myTurn = False
-
                     break  # Exit after the first card click to avoid multiple removals
 
-        if self.side_card_rect.collidepoint(pos) and self.conn.can_draw:
+        if self.side_card_rect.collidepoint(pos) and self.conn.can_draw and not playable:
             # # Send signal to server to increment opponents hand and update deck
             self.conn.send_message(f"%1, {self.conn.id}")
 
@@ -276,13 +275,22 @@ class Client:
         running = True
         clock = pygame.time.Clock()  # Add a clock to control framerate
         while running:
+            playable = 0
+            for index, _ in enumerate(self.conn._hand):
+                log(self.conn.id, self.conn._hand[index])
+                if self.conn._hand[index].matches(self.conn.middle):
+                    playable += 1
+
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     # del self.hand
                     self.conn.close()
                     running = False
                 elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1 and self.conn.started and self.conn.myTurn:
-                    self.handle_click(event.pos)
+                    self.handle_click(event.pos, playable)
+
+            if not self.conn.can_draw and playable == 0:
+                self.conn.send_message("UPDATE")
 
             # Draw the gradient background
             self.draw_gradient_background()
@@ -321,12 +329,13 @@ class Client:
 
 
 # Function to write in log file
-def log(message):
-    os.system(f"echo {datetime.datetime.now()} {message} >> log.txt")
+def log(id, message):
+    os.system(f"echo Player {id} {datetime.datetime.now()} {
+              message} >> log.txt")
 
 
 # Main Execution
 if __name__ == "__main__":
     os.system("cls")
     client = Client()
-    client.run()  # Run the game in the main thread
+    client.run()

@@ -61,7 +61,7 @@ class ConnectionHandler:
 
                     # Handle card to render for the middle
                     if message.startswith("?"):
-                        self.middle = message[1:]
+                        self.middle = Card.Card(message[1:])
 
                     # Handle either to add or remove card from opponent's hand
                     if message.startswith("%"):
@@ -78,6 +78,7 @@ class ConnectionHandler:
                     # Check if it's current user's turn depending on what turn is the server on
                     if message.startswith("TURN"):
                         self.myTurn = int(message[-1]) % 2 == int(self.id) - 1
+                        print(self.myTurn)
                         self.can_draw = True
 
                     if self.on_message_received:

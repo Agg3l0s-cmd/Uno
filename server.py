@@ -53,7 +53,7 @@ class GameServer:
             # Send a unique welcome message based on client ID
             for _, client in enumerate(self.clientsToSend):
                 client.sendall(f"You are Player {client_id}".encode("utf-8"))
-                time.sleep(0.05)
+                time.sleep(0.1)
                 # Send deck to user with ! prefix and id and remove him from the list to send
                 cards = f"!{self.getCard(7)}"
                 client.sendall(cards.encode("utf-8"))
@@ -65,7 +65,7 @@ class GameServer:
                 self.pid[int(id[1])] = self.clients[client_id-1]
                 print(f"Sent to Player {client_id}: {id}")
 
-                time.sleep(0.2)
+                time.sleep(0.1)
                 middle = f"?cards\\{self.mid}"
                 client.sendall(middle.encode("utf-8"))
                 print(f"Sent middle card to Player {client_id}: {middle}")

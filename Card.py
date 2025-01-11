@@ -32,12 +32,14 @@ class Card:
         Returns:
             bool: True if the card matches, False otherwise.
         """
-        return (self.color == middle.color or self.value == middle.value or self.color == "extra")
+        if middle == None or self == None:
+            return False
+        return (self.color == middle.color or self.value == middle.value or self.color == "extra" or middle.color == "extra")
 
 
 # Example usage
-if __name__ == "__main__":
-    card = Card("cards\\extra\\e1.png")
-    m = Card('cards\\extra\\e1.png')
-    print(card, " | ", m)
-    print(card.matches(m))
+# if __name__ == "__main__":
+#     card = Card("cards\\extra\\e1.png")
+#     m = Card('cards\\extra\\e1.png')
+#     print(card, " | ", m)
+#     print(card.matches(m))
