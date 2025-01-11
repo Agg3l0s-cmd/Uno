@@ -32,7 +32,6 @@ class Card:
         Returns:
             bool: True if the card matches, False otherwise.
         """
-
         return (self.color == middle.color or self.value == middle.value or self.color == "extra")
 
 

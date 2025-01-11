@@ -2,6 +2,8 @@ import pygame
 import os
 import Card
 import connection_handler
+import datetime
+
 
 class Client:
     def __init__(self, window_width=1000, window_height=900, num_cards=7, spacing=1):
@@ -230,29 +232,34 @@ class Client:
             if rect.collidepoint(pos):
                 # Remove the clicked card from the hand
                 clicked_card = self.conn._hand[index]
-                self.conn._hand.pop(index)
+                middle_card = Card.Card(self.conn.middle)
 
-                # Remove the clicked card's rect from the bottom card rectangles
-                self.bottom_card_rects.pop(index)
+                log(clicked_card.matches(middle_card))
+                if clicked_card.matches(middle_card):
 
-                # Set the clicked card as the center card
-                self.conn.send_message("?"+clicked_card.getPath())
-                # self.conn.middle = clicked_card
-                # self.center_card = clicked_card
-                pygame.display.flip()
+                    self.conn._hand.pop(index)
 
-                # Re-render the bottom cards after removal
-                self.display_user_cards()
+                    # Remove the clicked card's rect from the bottom card rectangles
+                    self.bottom_card_rects.pop(index)
 
-                # Send the card click to the server
-                self.conn.send_message(f"%-1, {self.conn.id}")
-                # time.sleep(.2)
-                self.conn.send_message("UPDATE")
+                    # Set the clicked card as the center card
+                    self.conn.send_message("?"+clicked_card.getPath())
+                    # self.conn.middle = clicked_card
+                    # self.center_card = clicked_card
+                    pygame.display.flip()
 
-                # Reset the turn for current user and if he can draw a card
-                # self.conn.myTurn = False
+                    # Re-render the bottom cards after removal
+                    self.display_user_cards()
 
-                break  # Exit after the first card click to avoid multiple removals
+                    # Send the card click to the server
+                    self.conn.send_message(f"%-1, {self.conn.id}")
+                    # time.sleep(.2)
+                    self.conn.send_message("UPDATE")
+
+                    # Reset the turn for current user and if he can draw a card
+                    # self.conn.myTurn = False
+
+                    break  # Exit after the first card click to avoid multiple removals
 
         if self.side_card_rect.collidepoint(pos) and self.conn.can_draw:
             # # Send signal to server to increment opponents hand and update deck
@@ -311,6 +318,11 @@ class Client:
 
             # Control the framerate
             clock.tick(60)  # 60 FPS
+
+
+# Function to write in log file
+def log(message):
+    os.system(f"echo {datetime.datetime.now()} {message} >> log.txt")
 
 
 # Main Execution

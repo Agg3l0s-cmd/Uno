@@ -26,6 +26,8 @@ class GameServer:
         self.clients = []  # List of connected clients
         self.clientsToSend = []
         self.lock = threading.Lock()  # Ensure thread-safe operations
+        self.mid = self.getCard()  # Get a card for the middle
+        print(self.mid)
 
     def start(self):
         """Start the server and accept client connections."""
@@ -46,9 +48,7 @@ class GameServer:
                 client_socket, len(self.clients)), daemon=True).start()
 
     def process_manager(self, client_socket, client_id):
-        """
-        Process manager for each client.
-        """
+        """Process manager for each client."""
         try:
             # Send a unique welcome message based on client ID
             for _, client in enumerate(self.clientsToSend):
@@ -59,11 +59,16 @@ class GameServer:
                 client.sendall(cards.encode("utf-8"))
                 print(f"Sent to Player {client_id}: {cards}")
 
-                time.sleep(.2)
+                time.sleep(0.1)
                 id = f"@{self.giveID()}"
                 client.sendall(id.encode("utf-8"))
                 self.pid[int(id[1])] = self.clients[client_id-1]
                 print(f"Sent to Player {client_id}: {id}")
+
+                time.sleep(0.2)
+                middle = f"?cards\\{self.mid}"
+                client.sendall(middle.encode("utf-8"))
+                print(f"Sent middle card to Player {client_id}: {middle}")
 
                 self.clientsToSend.remove(client)
                 # for client in self.clients:

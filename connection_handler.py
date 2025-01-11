@@ -44,6 +44,7 @@ class ConnectionHandler:
         """Listen for messages from the server."""
         while self.connected:
             try:
+
                 message = self.socket.recv(1024).decode("utf-8").strip()
                 if message:
                     print(f"Message received: {message}")
