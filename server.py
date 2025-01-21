@@ -29,6 +29,11 @@ class GameServer:
         self.mid = self.getCard()  # Get a card for the middle
         print(self.mid)
 
+        self.mid_color = self.mid.split("\\")[0]
+        self.mid_value = self.mid.split("\\")[1].split(".")[0]
+
+        print(f"Middle card: {self.mid_color} {self.mid_value}")
+
     def start(self):
         """Start the server and accept client connections."""
         self.server_socket.bind((self.host, self.port))
@@ -55,11 +60,12 @@ class GameServer:
                 client.sendall(f"You are Player {client_id}".encode("utf-8"))
                 time.sleep(0.1)
                 # Send deck to user with ! prefix and id and remove him from the list to send
-                cards = f"!{self.getCard(7)}"
+                cards = f"!{self.getCard(7)}\n"
                 client.sendall(cards.encode("utf-8"))
                 print(f"Sent to Player {client_id}: {cards}")
+                # client.sendall("\n".encode("utf-8"))
 
-                time.sleep(0.1)
+                time.sleep(0.15)
                 id = f"@{self.giveID()}"
                 client.sendall(id.encode("utf-8"))
                 self.pid[int(id[1])] = self.clients[client_id-1]
@@ -83,6 +89,8 @@ class GameServer:
                     start_signal = "START"
                     client.sendall(start_signal.encode("utf-8"))
                     time.sleep(0.1)
+                    client.sendall(f"MIDVALS|{self.mid_color}|{
+                                   self.mid_value}".encode("utf-8"))
 
             # Handle messages from the client
             while True:
@@ -96,6 +104,12 @@ class GameServer:
                     # Send back the played card so it can render in the middle
                     if message.startswith("?"):
                         self.sendBack(message)
+
+                    if message.startswith("!"):
+                        self.mid_color = message.split("|")[0][1:]
+                        self.mid_value = message.split("|")[1]
+                        print("NEW CARD: ", self.mid_color,
+                              self.mid_value)
 
                     # Update each user's hand after a card was played
                     if message.startswith("%"):
@@ -122,10 +136,11 @@ class GameServer:
                             print(ve)
                             continue
 
-                    # Get new random card and send to client
-
                     # Update turn
                     if message == "UPDATE":
+                        for client in self.clients:
+                            client.sendall(
+                                f"MIDVALS|{self.mid_color}|{self.mid_value}".encode("utf-8"))
                         self.turn += 1
 
         except Exception as e:

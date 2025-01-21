@@ -2,6 +2,8 @@ import socket
 import threading
 import time
 import Card
+import os
+import datetime
 
 
 class ConnectionHandler:
@@ -13,11 +15,15 @@ class ConnectionHandler:
         self.connected = False
         self.listener_thread = None
 
-        self._hand = []
+        self.hand = []
         self.id = None
         self.started = False
         self.myTurn = True
+
         self.middle = None
+        self.middle_color = None
+        self.middle_value = None
+
         self.newCard = 0
         self.can_draw = True
 
@@ -44,16 +50,17 @@ class ConnectionHandler:
         """Listen for messages from the server."""
         while self.connected:
             try:
-
                 message = self.socket.recv(1024).decode("utf-8").strip()
                 if message:
                     print(f"Message received: {message}")
+                    log(f"COLOR: {self.middle_color}, VALUE: {
+                        self.middle_value}")
 
                     # Handle received hand in the beginning
                     if message.startswith("!"):
                         for i in message[1::].split(','):
                             card = Card.Card(f"cards\\{i}")
-                            self._hand.append(card)
+                            self.hand.append(card)
 
                     # Hangle unique id received from server
                     if message.startswith("@"):
@@ -61,7 +68,12 @@ class ConnectionHandler:
 
                     # Handle card to render for the middle
                     if message.startswith("?"):
+                        print("MESSAGE: ", message)
                         self.middle = Card.Card(message[1:])
+
+                    if message.startswith("MIDVALS"):
+                        self.middle_color = message.split("|")[1]
+                        self.middle_value = message.split("|")[2]
 
                     # Handle either to add or remove card from opponent's hand
                     if message.startswith("%"):
@@ -84,7 +96,9 @@ class ConnectionHandler:
                     if self.on_message_received:
                         # Pass the message to the callback
                         self.on_message_received(message)
-            except Exception as e:
+
+                message = ""
+            except Exception:
                 # print(f"Error receiving message: {e}")
                 self.connected = False
                 break
@@ -112,25 +126,7 @@ class ConnectionHandler:
                 print(f"Error closing the connection: {e}")
 
 
-# Example usage
-# if __name__ == "__main__":
-#     def handle_game_message(message):
-#         """Handle game-specific logic for incoming messages."""
-#         print(f"Game logic processing: {message}")
+def log(message):
+    os.system(f"echo CONNECTION HANDLER {
+              datetime.datetime.now()} {message} >> log.txt")
 
-#     # Create and configure the connection handler
-#     conn = ConnectionHandler(server_ip="localhost", server_port=12345)
-#     conn.on_message_received = handle_game_message  # Set the callback for incoming messages
-
-#     # Connect to the server
-#     conn.connect_to_server()
-
-#     # Simulate sending game data
-#     while conn.connected:
-#         user_input = input("Enter a message to send (or 'quit' to exit): ")
-#         if user_input.lower() == "quit":
-#             break
-#         conn.send_message(user_input)
-
-#     # Close the connection
-#     conn.close()

@@ -22,24 +22,6 @@ class Card:
     def getPath(self):
         return self.path
 
-    def matches(self, middle):
-        """
-        Determine if this card can be played on top of another card.
+    def match(self, color, value):
+        return self.color == color or self.color == "extra" or self.value == value
 
-        Args:
-            other_card (UnoCard): The card to match against.
-
-        Returns:
-            bool: True if the card matches, False otherwise.
-        """
-        if middle == None or self == None:
-            return False
-        return (self.color == middle.color or self.value == middle.value or self.color == "extra" or middle.color == "extra")
-
-
-# Example usage
-# if __name__ == "__main__":
-#     card = Card("cards\\extra\\e1.png")
-#     m = Card('cards\\extra\\e1.png')
-#     print(card, " | ", m)
-#     print(card.matches(m))

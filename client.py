@@ -3,10 +3,15 @@ import os
 import Card
 import connection_handler
 import datetime
+import time
 
 
 class Client:
     def __init__(self, window_width=1000, window_height=900, num_cards=7, spacing=1):
+        # Create the connection handler
+        self.conn = connection_handler.ConnectionHandler()
+        self.conn.connect_to_server()
+
         # Constants
         self.CARD_WIDTH = 100
         self.CARD_HEIGHT = 170
@@ -14,9 +19,12 @@ class Client:
         self.SPACING = spacing
         self.window_width = window_width
         self.window_height = window_height
-        self.center_card = None
+        self.id = self.conn.id
         self.can_play = 0
         self.backCardPath = "cards\\back.png"
+
+        self.COLORMAP = {"red": (255, 0, 0), "blue": (
+            0, 0, 255), "green": (0, 255, 0), "yellow": (255, 255, 0)}
 
         # Store card rectangles for click detection
         self.bottom_card_rects = []
@@ -24,18 +32,14 @@ class Client:
         # Store side card rectangle for click detection
         self.side_card_rect = None
 
-        # Create the connection handler
-        self.conn = connection_handler.ConnectionHandler()
-        self.conn.connect_to_server()
-
         # Pygame setup
         pygame.init()
         self.screen = pygame.display.set_mode(
             (self.window_width, self.window_height))
-        pygame.display.set_caption('Uno')
+        pygame.display.set_caption(f'Player {self.id}')
 
         # Make opponent's deck
-        self.op = [Card.Card(self.backCardPath) for _ in self.conn._hand]
+        self.op = [Card.Card(self.backCardPath) for _ in self.conn.hand]
 
         # Store card rectangles for click detection
         self.bottom_card_rects = []
@@ -56,7 +60,7 @@ class Client:
         """Display the user's cards at the bottom of the screen with centered rows."""
         try:
             self.bottom_card_rects = self._render_cards(
-                y_offset=self.window_height - self.CARD_HEIGHT - 20, hand=self.conn._hand, enable_hover=True)
+                y_offset=self.window_height - self.CARD_HEIGHT - 20, hand=self.conn.hand, enable_hover=True)
         except Exception as e:
             pass
 
@@ -193,76 +197,49 @@ class Client:
             (x_pos, y_pos)
         )
 
-    def draw_gradient_background(self):
-        """Draw a smooth gradient background with blended Uno colors."""
-        # Define the start and end colors for the gradient
-        start_color = (255, 0, 0)   # Red
-        end_color = (0, 0, 255)     # Blue
-        mid_color1 = (255, 255, 0)  # Yellow
-        mid_color2 = (0, 255, 0)    # Green
-
-        # Create a list of colors for smooth interpolation
-        gradient_colors = [start_color, mid_color1, mid_color2, end_color]
-        gradient_height = self.window_height // (len(gradient_colors) - 1)
-
-        for i in range(len(gradient_colors) - 1):
-            self._draw_gradient_segment(
-                gradient_colors[i],
-                gradient_colors[i + 1],
-                i * gradient_height,
-                (i + 1) * gradient_height
-            )
-
-    def _draw_gradient_segment(self, start_color, end_color, start_y, end_y):
-        """Draw a single segment of the gradient."""
-        for y in range(start_y, end_y):
-            # Interpolate between start_color and end_color
-            # Interpolation factor (0 to 1)
-            t = (y - start_y) / (end_y - start_y)
-            r = int(start_color[0] + t * (end_color[0] - start_color[0]))
-            g = int(start_color[1] + t * (end_color[1] - start_color[1]))
-            b = int(start_color[2] + t * (end_color[2] - start_color[2]))
-
-            pygame.draw.line(self.screen, (r, g, b),
-                             (0, y), (self.window_width, y))
-
     def handle_click(self, pos, playable):
         """Handle mouse click events. Remove the clicked card and render it in the center."""
         for index, rect in enumerate(self.bottom_card_rects):
-            clicked_card = self.conn._hand[index]
-
+            clicked_card = self.conn.hand[index]
             if rect.collidepoint(pos) and playable:
                 # Remove the clicked card from the hand
-                # clicked_card = self.conn._hand[index]
+                # clicked_card = self.conn.hand[index]
                 # middle_card = Card.Card(self.conn.middle)
 
-                log(self.conn.id, clicked_card.matches(self.conn.middle))
-                if clicked_card.matches(self.conn.middle):
+                # log(self.conn.id, clicked_card.match(self.conn.middle_color))
+                if clicked_card.match(self.conn.middle_color, self.conn.middle_value):
 
-                    self.conn._hand.pop(index)
+                    self.conn.hand.pop(index)
 
                     # Remove the clicked card's rect from the bottom card rectangles
                     self.bottom_card_rects.pop(index)
 
                     # Set the clicked card as the center card
                     self.conn.send_message("?"+clicked_card.getPath())
-                    # self.conn.middle = clicked_card
-                    # self.center_card = clicked_card
+
                     pygame.display.flip()
 
                     # Re-render the bottom cards after removal
                     self.display_user_cards()
 
                     # Send the card click to the server
-                    self.conn.send_message(f"%-1, {self.conn.id}")
-                    # time.sleep(.2)
-                    self.conn.send_message("UPDATE")
+                    self.conn.send_message(f"%-1, {self.id}")
+                    time.sleep(0.1)
+                    self.conn.send_message(f"!{clicked_card.color}|{
+                                           clicked_card.value}")
+                    # self.conn.send_message("UPDATE")
 
-                    break  # Exit after the first card click to avoid multiple removals
+                    log(self.id, f"""{clicked_card.color == "extra"} {
+                        self.conn.middle_color == "extra"}""")
+
+                    if clicked_card.color == "extra":
+                        return 1  # Exit after the first card click to avoid multiple removals
+
+                    return 2  # Exit after the first card click to avoid multiple removals
 
         if self.side_card_rect.collidepoint(pos) and self.conn.can_draw and not playable:
             # # Send signal to server to increment opponents hand and update deck
-            self.conn.send_message(f"%1, {self.conn.id}")
+            self.conn.send_message(f"%1, {self.id}")
 
             # Update screen
             pygame.display.update()
@@ -270,15 +247,60 @@ class Client:
             # # Player can't draw anymore
             self.conn.can_draw = False
 
+    def render_color_picker(self):
+        """Render the color picker for wild cards."""
+
+        colors = ["red", "green", "blue", "yellow"]
+        picker_width = 50
+        picker_height = 50
+        picker_x = (self.window_width - picker_width * len(colors)) // 2
+        picker_y = self.window_height // 2 + 100
+        clicked = False
+
+        while not clicked:
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    pygame.quit()
+                    return False
+
+                for i, color in enumerate(colors):
+                    picker_rect = pygame.Rect(
+                        picker_x + i * picker_width, picker_y, picker_width, picker_height)
+                    pygame.draw.rect(self.screen, self.COLORMAP[color],
+                                     picker_rect, border_radius=5)
+
+                    # Check if the mouse is hovering over the color picker
+                    mouse_pos = pygame.mouse.get_pos()
+                    if picker_rect.collidepoint(mouse_pos):
+                        pygame.draw.rect(self.screen, (255, 255, 255),
+                                         picker_rect, border_radius=5, width=2)
+
+                        # if the user clicks on a color, update the turn and middle.color
+                        if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+                            self.conn.middle_color = color
+                            clicked = True
+                            log(self.id, f"Color picked: {color}")
+                            self.conn.send_message("UPDATE")
+                            time.sleep(0.1)
+                            self.conn.send_message(f"!{self.conn.middle_color}|{
+                                                   self.conn.middle_value}")
+
+            pygame.display.update()
+
+        return clicked
+
     def run(self):
         """Main game loop to run the viewer."""
+        self.id = self.conn.id
+        pygame.display.set_caption(f'Player {self.id}')
         running = True
+        item = 0
         clock = pygame.time.Clock()  # Add a clock to control framerate
         while running:
             playable = 0
-            for index, _ in enumerate(self.conn._hand):
-                log(self.conn.id, self.conn._hand[index])
-                if self.conn._hand[index].matches(self.conn.middle):
+            for index, _ in enumerate(self.conn.hand):
+                # log(self.conn.id, self.conn.hand[index])
+                if self.conn.hand[index].match(self.conn.middle_color, self.conn.middle_value):
                     playable += 1
 
             for event in pygame.event.get():
@@ -287,18 +309,25 @@ class Client:
                     self.conn.close()
                     running = False
                 elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1 and self.conn.started and self.conn.myTurn:
-                    self.handle_click(event.pos, playable)
+                    log(self.id, f"CLICKED, PLAYABLE={playable}")
+                    item = self.handle_click(event.pos, playable)
 
             if not self.conn.can_draw and playable == 0:
                 self.conn.send_message("UPDATE")
 
-            # Draw the gradient background
-            self.draw_gradient_background()
+            # Make background dark grey
+            self.screen.fill((50, 50, 50))
 
             # print("TURN: ", self.conn.myTurn)
 
             # Display user's hand
             self.display_user_cards()
+
+            try:
+                # Display opponent's hand
+                self.display_op_cards()
+            except Exception as e:
+                log(self.id, e)
 
             # Updated opponent's hand after play
             if self.conn.newCard == -1:
@@ -311,9 +340,6 @@ class Client:
                     self.op.append(Card.Card(self.backCardPath))
                     self.conn.newCard = 0
 
-            # Display opponent's hand
-            self.display_op_cards()
-
             # Display middle card
             if self.conn.middle:
                 self.display_card_center(self.conn.middle)
@@ -323,6 +349,17 @@ class Client:
 
             # Update the display
             pygame.display.flip()
+
+            # Check if the middle card is wild card
+            # If it is, render the color picker
+            # Else render the middle card normally
+            if item == 1:
+                if self.render_color_picker():
+                    # self.conn.send_message("UPDATE")
+                    item = 0
+            elif item == 2:
+                self.conn.send_message("UPDATE")
+                item = 0
 
             # Control the framerate
             clock.tick(60)  # 60 FPS

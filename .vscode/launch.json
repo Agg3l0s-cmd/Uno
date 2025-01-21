@@ -8,8 +8,8 @@
       "args": [],
       "stopAtEntry": false,
       "externalConsole": true,
-      "cwd": "c:/Users/troll/Desktop/newUno",
-      "program": "c:/Users/troll/Desktop/newUno/build/Debug/outDebug",
+      "cwd": "c:/Users/troll/Desktop/Uno",
+      "program": "c:/Users/troll/Desktop/Uno/build/Debug/outDebug",
       "MIMode": "gdb",
       "miDebuggerPath": "gdb",
       "setupCommands": [
